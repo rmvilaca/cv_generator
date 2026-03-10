@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  user: one
+  stripe_session_id: MyString
+  amount_cents: 1
+  token_amount: 1
+  status: MyString
+
+two:
+  user: two
+  stripe_session_id: MyString
+  amount_cents: 1
+  token_amount: 1
+  status: MyString
