@@ -29,6 +29,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .map((n) => n.innerText.trim())
       .filter(Boolean)
       .join("\n\n");
+
+    text = stripInlineNoise(text);
   }
 
   // Fallback: grab <main> text but strip LinkedIn UI noise
@@ -46,6 +48,77 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   sendResponse({ success: true, text });
 });
+
+/**
+ * Remove inline LinkedIn UI noise from extracted text.
+ */
+function stripInlineNoise(text) {
+  const noisePatterns = [
+    // EN
+    /Promoted by hirer[^\n]*/gi,
+    /Responses managed off LinkedIn/gi,
+    /See how you compare to[^\n]*/gi,
+    /Access exclusive applicant insights[^\n]*/g,
+    /Try Premium for [^\n]*/g,
+    /1-month free trial[^\n]*/g,
+    /1-month free with[^\n]*/g,
+    /\d+ people clicked apply/g,
+    /\d+ others who clicked apply/g,
+    /Reposted \d+ \w+ ago · /g,
+    /^Apply$/gm,
+    /^Save$/gm,
+    /^Follow$/gm,
+    /Set alert for similar jobs[\s\S]*?^Off$/gm,
+    /^\d[\d,]+ followers$/gm,
+    /^\d+ on LinkedIn$/gm,
+    /show more$/gm,
+    /… more$/gm,
+    /^Millions of members use Premium$/gm,
+    /^Job search faster with Premium$/gm,
+    /^Access company insights[^\n]*/gm,
+    /\d+ of \d+ skills? match[^\n]*/gi,
+    /Matches your job preferences[^\n]*/gi,
+    /^Full-time$/gm,
+    /^Part-time$/gm,
+    /^Contract$/gm,
+    /^Hybrid$/gm,
+    /^Remote$/gm,
+    /^On-site$/gm,
+    // PT
+    /Promovida por quem está contratando[^\n]*/g,
+    /Respostas gerenciadas fora do LinkedIn/g,
+    /Veja como você se compara[^\n]*/g,
+    /Veja sua posição entre (mais de )?\d+[^\n]*/g,
+    /Acesse insights exclusivos[^\n]*/g,
+    /Experimente Premium por [^\n]*/g,
+    /Grátis por 1 mês com[^\n]*/g,
+    /\d+ pessoas clicaram em Candidate-se/g,
+    /Compartilhou há \d+ \w+/g,
+    /^Candidate-se$/gm,
+    /^Salvar$/gm,
+    /^Seguir$/gm,
+    /^Conectar$/gm,
+    /Ative um alerta para vagas semelhantes[\s\S]*?^Desativada$/gm,
+    /^\d[\d.]+ seguidores$/gm,
+    /^\d+ no LinkedIn$/gm,
+    /mostrar mais$/gm,
+    /… mais$/gm,
+    /^Milhões de usuários[^\n]*/gm,
+    /^Pesquise vagas mais rápido[^\n]*/gm,
+    /^Acesse informações sobre empresas[^\n]*/gm,
+    /\d+ de \d+ competências? correspondem?[^\n]*/gi,
+    /Corresponde às suas preferências de vaga[^\n]*/gi,
+    /^Ex-aluno da instituição[^\n]*/gm,
+    /^Enviaremos um lembrete[^\n]*/gm,
+    /^Cancele quando quiser[^\n]*/gm,
+    /^Híbrido$/gm,
+    /^Tempo integral$/gm,
+  ];
+  for (const pattern of noisePatterns) {
+    text = text.replace(pattern, "");
+  }
+  return text;
+}
 
 /**
  * Strip LinkedIn UI chrome from a full <main> innerText dump.
@@ -84,57 +157,7 @@ function cleanFallbackText(raw) {
   );
 
   // 3. Remove inline LinkedIn UI noise
-  const noisePatterns = [
-    // EN
-    /Promoted by hirer[^\n]*/g,
-    /Responses managed off LinkedIn/g,
-    /See how you compare to \d+[^\n]*/g,
-    /Access exclusive applicant insights[^\n]*/g,
-    /Try Premium for [^\n]*/g,
-    /1-month free with[^\n]*/g,
-    /\d+ people clicked apply/g,
-    /Reposted \d+ \w+ ago · /g,
-    /^Apply$/gm,
-    /^Save$/gm,
-    /^Follow$/gm,
-    /Set alert for similar jobs[\s\S]*?^Off$/gm,
-    /^\d[\d,]+ followers$/gm,
-    /^\d+ on LinkedIn$/gm,
-    /show more$/gm,
-    /… more$/gm,
-    /^Millions of members use Premium$/gm,
-    /^Job search faster with Premium$/gm,
-    /^Access company insights[^\n]*/gm,
-    // PT
-    /Promovida por quem está contratando[^\n]*/g,
-    /Respostas gerenciadas fora do LinkedIn/g,
-    /Veja como você se compara[^\n]*/g,
-    /Acesse insights exclusivos[^\n]*/g,
-    /Experimente Premium por [^\n]*/g,
-    /Grátis por 1 mês com[^\n]*/g,
-    /\d+ pessoas clicaram em Candidate-se/g,
-    /Compartilhou há \d+ \w+/g,
-    /^Candidate-se$/gm,
-    /^Salvar$/gm,
-    /^Seguir$/gm,
-    /^Conectar$/gm,
-    /Ative um alerta para vagas semelhantes[\s\S]*?^Desativada$/gm,
-    /^\d[\d.]+ seguidores$/gm,
-    /^\d+ no LinkedIn$/gm,
-    /mostrar mais$/gm,
-    /… mais$/gm,
-    /^Milhões de usuários[^\n]*/gm,
-    /^Pesquise vagas mais rápido[^\n]*/gm,
-    /^Acesse informações sobre empresas[^\n]*/gm,
-    /^Ex-aluno da instituição[^\n]*/gm,
-    /^Enviaremos um lembrete[^\n]*/gm,
-    /^Cancele quando quiser[^\n]*/gm,
-    /^Híbrido$/gm,
-    /^Tempo integral$/gm,
-  ];
-  for (const pattern of noisePatterns) {
-    text = text.replace(pattern, "");
-  }
+  text = stripInlineNoise(text);
 
   // 4. Clean up the "About the company" section.
   //    Raw text includes: company name, industry, " • ", employee count, etc.

@@ -20,7 +20,6 @@ const SUB_SELECTOR_SEARCH = `
   .job-details-jobs-unified-top-card__company-name,
   .job-details-jobs-unified-top-card__job-title,
   span[dir="ltr"] > .tvm__text--low-emphasis:first-child,
-  .job-details-fit-level-preferences,
   .jobs-description__content,
   .jobs-description-content,
   .jobs-company__box > h2.text-heading-large,
