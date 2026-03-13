@@ -46,6 +46,9 @@ saveKeyBtn.addEventListener("click", () => {
 });
 
 // ── Extraction ─────────────────────────────────────────────────
+const analyzeBtn = document.getElementById("analyze-btn");
+const analysisDiv = document.getElementById("analysis");
+
 document.getElementById("extract-btn").addEventListener("click", async () => {
   const btn = document.getElementById("extract-btn");
   const result = document.getElementById("result");
@@ -67,6 +70,8 @@ document.getElementById("extract-btn").addEventListener("click", async () => {
 
     if (response?.success) {
       result.textContent = response.text;
+      analyzeBtn.classList.remove("hidden");
+      analyzeBtn.disabled = false;
     } else {
       result.textContent = response?.error ?? "Unknown error.";
       result.classList.add("error");
@@ -81,3 +86,91 @@ document.getElementById("extract-btn").addEventListener("click", async () => {
   btn.disabled = false;
   btn.textContent = "Extract";
 });
+
+// ── Analyze ─────────────────────────────────────────────────────
+analyzeBtn.addEventListener("click", async () => {
+  const resultDiv = document.getElementById("result");
+  const text = resultDiv.textContent;
+
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = "Analyzing…";
+  analysisDiv.classList.add("hidden");
+  analysisDiv.classList.remove("error");
+
+  try {
+    const { openai_api_key } = await chrome.storage.local.get("openai_api_key");
+    const result = await analyzeJobPosting(text, openai_api_key);
+    renderAnalysis(result);
+  } catch (err) {
+    analysisDiv.textContent = err.message;
+    analysisDiv.classList.add("error");
+    analysisDiv.classList.remove("hidden");
+  }
+
+  analyzeBtn.disabled = false;
+  analyzeBtn.textContent = "Analyze with AI";
+});
+
+/**
+ * Render the structured analysis result into the analysis container.
+ */
+function renderAnalysis(data) {
+  analysisDiv.innerHTML = "";
+
+  const sections = [
+    { key: "skills", label: "Skills" },
+    { key: "job",    label: "Job Topics" },
+    { key: "tech",   label: "Technologies" },
+  ];
+
+  for (const { key, label } of sections) {
+    const items = data[key];
+    if (!items || !items.length) continue;
+
+    const section = document.createElement("div");
+    section.className = "analysis-section";
+
+    const heading = document.createElement("h3");
+    heading.textContent = label;
+    section.appendChild(heading);
+
+    for (const item of items) {
+      const title = Object.keys(item)[0];
+      const details = item[title];
+
+      const card = document.createElement("div");
+      card.className = "analysis-card";
+
+      const titleEl = document.createElement("strong");
+      titleEl.textContent = title;
+      card.appendChild(titleEl);
+
+      if (Array.isArray(details)) {
+        const ul = document.createElement("ul");
+        for (const d of details) {
+          const li = document.createElement("li");
+          li.textContent = d;
+          ul.appendChild(li);
+        }
+        card.appendChild(ul);
+      }
+
+      section.appendChild(card);
+    }
+
+    analysisDiv.appendChild(section);
+  }
+
+  // Copy JSON button
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "secondary-btn copy-btn";
+  copyBtn.textContent = "Copy JSON";
+  copyBtn.addEventListener("click", () => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    copyBtn.textContent = "Copied!";
+    setTimeout(() => { copyBtn.textContent = "Copy JSON"; }, 1500);
+  });
+  analysisDiv.appendChild(copyBtn);
+
+  analysisDiv.classList.remove("hidden");
+}
