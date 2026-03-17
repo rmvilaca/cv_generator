@@ -46,17 +46,30 @@ saveKeyBtn.addEventListener("click", () => {
 });
 
 // ── Extraction ─────────────────────────────────────────────────
+const extractBtn = document.getElementById("extract-btn");
 const analyzeBtn = document.getElementById("analyze-btn");
 const analysisDiv = document.getElementById("analysis");
+const resultDiv = document.getElementById("result");
+const resultToggle = document.getElementById("result-toggle");
 
-document.getElementById("extract-btn").addEventListener("click", async () => {
-  const btn = document.getElementById("extract-btn");
-  const result = document.getElementById("result");
+function setExtractedTextVisibility(isVisible) {
+  resultDiv.classList.toggle("hidden", !isVisible);
+  resultToggle.classList.remove("hidden");
+  resultToggle.textContent = isVisible ? "Hide extracted text" : "Show extracted text";
+  resultToggle.setAttribute("aria-expanded", String(isVisible));
+}
 
-  btn.disabled = true;
-  btn.textContent = "Extracting…";
-  result.classList.add("hidden");
-  result.classList.remove("error");
+resultToggle.addEventListener("click", () => {
+  const isVisible = !resultDiv.classList.contains("hidden");
+  setExtractedTextVisibility(!isVisible);
+});
+
+extractBtn.addEventListener("click", async () => {
+  extractBtn.disabled = true;
+  extractBtn.textContent = "Extracting…";
+  resultDiv.classList.add("hidden");
+  resultDiv.classList.remove("error");
+  resultToggle.classList.add("hidden");
 
   try {
     const [tab] = await chrome.tabs.query({
@@ -69,27 +82,30 @@ document.getElementById("extract-btn").addEventListener("click", async () => {
     });
 
     if (response?.success) {
-      result.textContent = response.text;
+      resultDiv.textContent = response.text;
       analyzeBtn.classList.remove("hidden");
       analyzeBtn.disabled = false;
+      setExtractedTextVisibility(true);
     } else {
-      result.textContent = response?.error ?? "Unknown error.";
-      result.classList.add("error");
+      resultDiv.textContent = response?.error ?? "Unknown error.";
+      resultDiv.classList.add("error");
+      resultDiv.classList.remove("hidden");
+      resultToggle.classList.add("hidden");
     }
   } catch (err) {
-    result.textContent =
+    resultDiv.textContent =
       "Could not connect to this page. Try refreshing the page first.";
-    result.classList.add("error");
+    resultDiv.classList.add("error");
+    resultDiv.classList.remove("hidden");
+    resultToggle.classList.add("hidden");
   }
 
-  result.classList.remove("hidden");
-  btn.disabled = false;
-  btn.textContent = "Extract";
+  extractBtn.disabled = false;
+  extractBtn.textContent = "Extract";
 });
 
 // ── Analyze ─────────────────────────────────────────────────────
 analyzeBtn.addEventListener("click", async () => {
-  const resultDiv = document.getElementById("result");
   const text = resultDiv.textContent;
 
   analyzeBtn.disabled = true;
@@ -101,10 +117,16 @@ analyzeBtn.addEventListener("click", async () => {
     const { openai_api_key } = await chrome.storage.local.get("openai_api_key");
     const result = await analyzeJobPosting(text, openai_api_key);
     renderAnalysis(result);
+    setExtractedTextVisibility(false);
+
+    // Final step completed: hide action buttons after successful analysis.
+    extractBtn.classList.add("hidden");
+    analyzeBtn.classList.add("hidden");
   } catch (err) {
     analysisDiv.textContent = err.message;
     analysisDiv.classList.add("error");
     analysisDiv.classList.remove("hidden");
+    setExtractedTextVisibility(true);
   }
 
   analyzeBtn.disabled = false;
@@ -130,9 +152,24 @@ function renderAnalysis(data) {
     const section = document.createElement("div");
     section.className = "analysis-section";
 
-    const heading = document.createElement("h3");
-    heading.textContent = label;
-    section.appendChild(heading);
+    const headingBtn = document.createElement("button");
+    headingBtn.type = "button";
+    headingBtn.className = "analysis-toggle";
+    headingBtn.setAttribute("aria-expanded", "false");
+
+    const headingLabel = document.createElement("span");
+    headingLabel.textContent = label;
+
+    const headingIcon = document.createElement("span");
+    headingIcon.className = "analysis-toggle-icon";
+    headingIcon.textContent = "▸";
+
+    headingBtn.appendChild(headingLabel);
+    headingBtn.appendChild(headingIcon);
+    section.appendChild(headingBtn);
+
+    const sectionBody = document.createElement("div");
+    sectionBody.className = "analysis-section-body hidden";
 
     for (const item of items) {
       const title = Object.keys(item)[0];
@@ -155,8 +192,17 @@ function renderAnalysis(data) {
         card.appendChild(ul);
       }
 
-      section.appendChild(card);
+      sectionBody.appendChild(card);
     }
+
+    headingBtn.addEventListener("click", () => {
+      const isOpen = !sectionBody.classList.contains("hidden");
+      sectionBody.classList.toggle("hidden", isOpen);
+      headingBtn.setAttribute("aria-expanded", String(!isOpen));
+      headingIcon.textContent = isOpen ? "▸" : "▾";
+    });
+
+    section.appendChild(sectionBody);
 
     analysisDiv.appendChild(section);
   }
