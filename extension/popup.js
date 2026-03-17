@@ -54,14 +54,17 @@ const resultToggle = document.getElementById("result-toggle");
 
 function setExtractedTextVisibility(isVisible) {
   resultDiv.classList.toggle("hidden", !isVisible);
-  resultToggle.classList.remove("hidden");
+}
+
+function updateResultToggleLabel(isVisible) {
   resultToggle.textContent = isVisible ? "Hide extracted text" : "Show extracted text";
   resultToggle.setAttribute("aria-expanded", String(isVisible));
 }
 
 resultToggle.addEventListener("click", () => {
-  const isVisible = !resultDiv.classList.contains("hidden");
-  setExtractedTextVisibility(!isVisible);
+  const isVisible = resultDiv.classList.contains("hidden");
+  setExtractedTextVisibility(isVisible);
+  updateResultToggleLabel(isVisible);
 });
 
 extractBtn.addEventListener("click", async () => {
@@ -86,11 +89,13 @@ extractBtn.addEventListener("click", async () => {
       analyzeBtn.classList.remove("hidden");
       analyzeBtn.disabled = false;
       setExtractedTextVisibility(true);
+      extractBtn.classList.add("hidden");
     } else {
       resultDiv.textContent = response?.error ?? "Unknown error.";
       resultDiv.classList.add("error");
       resultDiv.classList.remove("hidden");
       resultToggle.classList.add("hidden");
+      extractBtn.classList.remove("hidden");
     }
   } catch (err) {
     resultDiv.textContent =
@@ -98,6 +103,7 @@ extractBtn.addEventListener("click", async () => {
     resultDiv.classList.add("error");
     resultDiv.classList.remove("hidden");
     resultToggle.classList.add("hidden");
+    extractBtn.classList.remove("hidden");
   }
 
   extractBtn.disabled = false;
@@ -118,6 +124,8 @@ analyzeBtn.addEventListener("click", async () => {
     const result = await analyzeJobPosting(text, openai_api_key);
     renderAnalysis(result);
     setExtractedTextVisibility(false);
+    resultToggle.classList.remove("hidden");
+    updateResultToggleLabel(false);
 
     // Final step completed: hide action buttons after successful analysis.
     extractBtn.classList.add("hidden");
@@ -127,6 +135,8 @@ analyzeBtn.addEventListener("click", async () => {
     analysisDiv.classList.add("error");
     analysisDiv.classList.remove("hidden");
     setExtractedTextVisibility(true);
+    resultToggle.classList.add("hidden");
+    extractBtn.classList.remove("hidden");
   }
 
   analyzeBtn.disabled = false;
