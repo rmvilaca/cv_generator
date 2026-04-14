@@ -172,8 +172,7 @@ GEM
       net-smtp
     marcel (1.1.0)
     mini_mime (1.1.5)
-    minitest (6.0.1)
-      prism (~> 1.5)
+    minitest (5.27.0)
     msgpack (1.8.0)
     multipart-post (2.4.1)
     net-http (0.9.1)
@@ -394,6 +393,7 @@ DEPENDENCIES
   devise-jwt
   jsonapi-serializer
   kamal
+  minitest (~> 5.1)
   puma (>= 5.0)
   rack-cors
   rails (~> 8.1.2)

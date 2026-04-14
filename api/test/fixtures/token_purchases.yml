@@ -2,14 +2,14 @@
 
 one:
   user: one
-  stripe_session_id: MyString
-  amount_cents: 1
+  stripe_session_id: cs_fixture_one_aabbcc
+  amount_cents: 100
   token_amount: 1
-  status: MyString
+  status: pending
 
 two:
   user: two
-  stripe_session_id: MyString
-  amount_cents: 1
-  token_amount: 1
-  status: MyString
+  stripe_session_id: cs_fixture_two_ddeeff
+  amount_cents: 200
+  token_amount: 2
+  status: completed

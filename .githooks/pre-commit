@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+echo "==> Running pre-commit checks..."
+
+# ── API (Ruby / Rails) ────────────────────────────────────────────
+echo "--- rubocop"
+(cd "$REPO_ROOT/api" && bundle exec rubocop --no-color)
+
+echo "--- brakeman"
+(cd "$REPO_ROOT/api" && bundle exec brakeman -q --no-pager)
+
+echo "--- rails test"
+(cd "$REPO_ROOT/api" && bundle exec rails test)
+
+# ── Web (React / Vitest) ──────────────────────────────────────────
+echo "--- vitest"
+(cd "$REPO_ROOT/web" && npm test -- --run)
+
+echo "==> All pre-commit checks passed."

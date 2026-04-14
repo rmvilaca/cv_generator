@@ -39,7 +39,7 @@ class CvGenerationServiceTest < ActiveSupport::TestCase
   end
 
   test "returns structured CV content from OpenAI" do
-    stub_client = ->(_access_token:) {
+    stub_client = ->(access_token:) {
       Object.new.tap { |c| c.define_singleton_method(:chat) { |**_| MOCK_RESPONSE } }
     }
 
