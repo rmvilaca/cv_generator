@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_13_100005) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_14_045929) do
   create_table "cv_generations", force: :cascade do |t|
     t.text "content"
     t.datetime "created_at", null: false
@@ -26,11 +26,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_100005) do
   create_table "education_entries", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "degree", null: false
+    t.text "description"
+    t.string "end_year"
+    t.string "field_of_study"
     t.string "institution", null: false
     t.integer "position", default: 0, null: false
+    t.text "skills", default: "[]", null: false
+    t.string "start_year"
     t.datetime "updated_at", null: false
     t.integer "user_profile_id", null: false
-    t.string "year"
     t.index ["user_profile_id"], name: "index_education_entries_on_user_profile_id"
   end
 
@@ -96,8 +100,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_100005) do
     t.text "bullet_points", default: "[]", null: false
     t.string "company", null: false
     t.datetime "created_at", null: false
+    t.text "description"
     t.string "end_date"
+    t.string "location"
     t.integer "position", default: 0, null: false
+    t.text "skills", default: "[]", null: false
     t.string "start_date", null: false
     t.string "title", null: false
     t.datetime "updated_at", null: false
