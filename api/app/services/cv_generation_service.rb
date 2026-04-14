@@ -17,7 +17,7 @@ class CvGenerationService
       ],
       "skills":    ["<skill 1>", "<skill 2>"],
       "education": [
-        { "institution": "<name>", "degree": "<degree>", "year": "<year>" }
+        { "institution": "<name>", "degree": "<degree>", "field_of_study": "<field>", "year": "<start> – <end>" }
       ]
     }
 
@@ -94,14 +94,27 @@ class CvGenerationService
   def format_work_experience(profile)
     profile.work_experiences.map do |exp|
       period  = exp.end_date.present? ? "#{exp.start_date} – #{exp.end_date}" : "#{exp.start_date} – Present"
+      lines = []
+      lines << "#{exp.title} at #{exp.company} (#{period})"
+      lines << "Location: #{exp.location}" if exp.location.present?
+      lines << exp.description if exp.description.present?
+      lines << "Skills: #{exp.skills.join(", ")}" if exp.skills.present?
       bullets = exp.bullet_points.map { |b| "  - #{b}" }.join("\n")
-      "#{exp.title} at #{exp.company} (#{period})\n#{bullets}"
+      lines << bullets if bullets.present?
+      lines.join("\n")
     end.join("\n\n")
   end
 
   def format_education(profile)
     profile.education_entries.map do |edu|
-      "#{edu.degree} — #{edu.institution} (#{edu.year})"
-    end.join("\n")
+      period = [ edu.start_year, edu.end_year ].compact.join(" – ")
+      lines = []
+      lines << "#{edu.degree} — #{edu.institution}"
+      lines << "Field of study: #{edu.field_of_study}" if edu.field_of_study.present?
+      lines << "(#{period})" if period.present?
+      lines << edu.description if edu.description.present?
+      lines << "Skills: #{edu.skills.join(", ")}" if edu.skills.present?
+      lines.join("\n")
+    end.join("\n\n")
   end
 end
