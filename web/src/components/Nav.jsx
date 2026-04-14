@@ -13,7 +13,25 @@ export default function Nav() {
     navigate("/login");
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <header className="border-b bg-card">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+          <Link to="/" className="text-lg font-bold tracking-tight">
+            CV Generator
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/login">Sign in</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link to="/register">Register</Link>
+            </Button>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="border-b bg-card">

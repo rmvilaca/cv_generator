@@ -16,6 +16,9 @@ echo "--- rails test"
 (cd "$REPO_ROOT/api" && bundle exec rails test)
 
 # ── Web (React / Vitest) ──────────────────────────────────────────
+echo "--- eslint"
+(cd "$REPO_ROOT/web" && npm run lint)
+
 echo "--- vitest"
 (cd "$REPO_ROOT/web" && npm test -- --run)
 
