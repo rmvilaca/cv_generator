@@ -39,7 +39,10 @@ class Api::ProfilesController < ApplicationController
         title:         exp[:title],
         start_date:    exp[:start_date],
         end_date:      exp[:end_date],
+        description:   exp[:description],
+        location:      exp[:location],
         bullet_points: Array(exp[:bullet_points]),
+        skills:        Array(exp[:skills]),
         position:      exp[:position] || index
       )
     end
@@ -51,10 +54,14 @@ class Api::ProfilesController < ApplicationController
     profile.education_entries.destroy_all
     Array(entries).each_with_index do |edu, index|
       profile.education_entries.create!(
-        institution: edu[:institution],
-        degree:      edu[:degree],
-        year:        edu[:year],
-        position:    edu[:position] || index
+        institution:    edu[:institution],
+        degree:         edu[:degree],
+        field_of_study: edu[:field_of_study],
+        start_year:     edu[:start_year],
+        end_year:       edu[:end_year],
+        description:    edu[:description],
+        skills:         Array(edu[:skills]),
+        position:       edu[:position] || index
       )
     end
   end

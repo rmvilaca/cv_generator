@@ -25,7 +25,7 @@ class Api::ProfilesControllerTest < ActionDispatch::IntegrationTest
               end_date: nil, bullet_points: [ "Built APIs" ], position: 0 }
           ],
           education_entries: [
-            { institution: "MIT", degree: "BSc CS", year: "2020", position: 0 }
+            { institution: "MIT", degree: "BSc CS", start_year: "2020", position: 0 }
           ]
         },
         headers: @headers,
@@ -61,5 +61,47 @@ class Api::ProfilesControllerTest < ActionDispatch::IntegrationTest
   test "requires authentication" do
     get "/api/profile"
     assert_response :unauthorized
+  end
+
+  test "PUT /api/profile round-trips expanded work experience fields" do
+    put "/api/profile",
+        params: {
+          full_name: "Jane Doe",
+          work_experiences: [
+            { company: "Acme", title: "Engineer", start_date: "Jan 2020",
+              end_date: nil, bullet_points: [ "Built APIs" ], description: "Full-stack work",
+              location: "Lisbon", skills: [ "Ruby", "Rails" ], position: 0 }
+          ]
+        },
+        headers: @headers,
+        as: :json
+
+    assert_response :ok
+    exp = JSON.parse(response.body)["work_experiences"][0]
+    assert_equal "Full-stack work", exp["description"]
+    assert_equal "Lisbon", exp["location"]
+    assert_equal [ "Ruby", "Rails" ], exp["skills"]
+  end
+
+  test "PUT /api/profile round-trips expanded education fields" do
+    put "/api/profile",
+        params: {
+          full_name: "Jane Doe",
+          education_entries: [
+            { institution: "MIT", degree: "BSc CS", field_of_study: "Computer Science",
+              start_year: "2016", end_year: "2020", description: "Dean's list",
+              skills: [ "Python", "ML" ], position: 0 }
+          ]
+        },
+        headers: @headers,
+        as: :json
+
+    assert_response :ok
+    edu = JSON.parse(response.body)["education_entries"][0]
+    assert_equal "Computer Science", edu["field_of_study"]
+    assert_equal "2016", edu["start_year"]
+    assert_equal "2020", edu["end_year"]
+    assert_equal "Dean's list", edu["description"]
+    assert_equal [ "Python", "ML" ], edu["skills"]
   end
 end
