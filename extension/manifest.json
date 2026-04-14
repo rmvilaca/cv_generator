@@ -1,7 +1,7 @@
 {
-  "name": "Token Shop – CV Extractor",
-  "description": "Extract page content to help build your CV.",
-  "version": "1.0.0",
+  "name": "CV Generator — Job Saver",
+  "description": "Extract job postings and save them to your CV Generator account.",
+  "version": "2.0.0",
   "manifest_version": 3,
   "action": {
     "default_popup": "popup.html"

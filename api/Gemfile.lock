@@ -117,8 +117,10 @@ GEM
       zeitwerk (~> 2.6)
     ed25519 (1.4.0)
     erb (6.0.1)
-    event_stream_parser (1.0.0)
     erubi (1.13.1)
+    et-orbi (1.4.0)
+      tzinfo
+    event_stream_parser (1.0.0)
     faraday (2.14.1)
       faraday-net_http (>= 2.0, < 3.5)
       json
@@ -127,8 +129,6 @@ GEM
       multipart-post (~> 2.0)
     faraday-net_http (3.4.2)
       net-http (~> 0.5)
-    et-orbi (1.4.0)
-      tzinfo
     fugit (1.12.1)
       et-orbi (~> 1.4)
       raabro (~> 1.4)

@@ -1,232 +1,173 @@
-// ── Settings panel ──────────────────────────────────────────────
-const settingsToggle = document.getElementById("settings-toggle");
-const settingsPanel  = document.getElementById("settings-panel");
-const apiKeyInput    = document.getElementById("api-key-input");
-const toggleVis      = document.getElementById("toggle-visibility");
-const saveKeyBtn     = document.getElementById("save-key-btn");
-const keyStatus      = document.getElementById("key-status");
+// ── DOM references ─────────────────────────────────────────────
+const loginView     = document.getElementById("login-view");
+const mainView      = document.getElementById("main-view");
+const loginForm     = document.getElementById("login-form");
+const emailInput    = document.getElementById("email-input");
+const passwordInput = document.getElementById("password-input");
+const loginError    = document.getElementById("login-error");
+const loginBtn      = document.getElementById("login-btn");
+const userEmail     = document.getElementById("user-email");
+const signOutBtn    = document.getElementById("sign-out-btn");
 
-function maskKey(key) {
-  if (!key) return "";
-  if (key.length <= 8) return "••••••••";
-  return key.slice(0, 5) + "•••" + key.slice(-4);
+const extractStep  = document.getElementById("extract-step");
+const reviewStep   = document.getElementById("review-step");
+const confirmStep  = document.getElementById("confirm-step");
+
+const extractBtn   = document.getElementById("extract-btn");
+const extractError = document.getElementById("extract-error");
+const resultDiv    = document.getElementById("result");
+const saveError    = document.getElementById("save-error");
+const reExtractBtn = document.getElementById("re-extract-btn");
+const saveBtn      = document.getElementById("save-btn");
+const viewLink     = document.getElementById("view-link");
+const newExtractBtn = document.getElementById("new-extract-btn");
+
+// ── Init: check stored JWT ─────────────────────────────────────
+chrome.storage.local.get(["jwt_token", "user_email"], ({ jwt_token, user_email }) => {
+  if (jwt_token) {
+    showMainView(user_email);
+  } else {
+    showLoginView();
+  }
+});
+
+function showLoginView() {
+  loginView.classList.remove("hidden");
+  mainView.classList.add("hidden");
 }
 
-// Load saved key on popup open
-chrome.storage.local.get("openai_api_key", ({ openai_api_key }) => {
-  if (openai_api_key) {
-    apiKeyInput.value = openai_api_key;
-    keyStatus.textContent = `Saved: ${maskKey(openai_api_key)}`;
-    keyStatus.classList.add("saved");
+function showMainView(email) {
+  loginView.classList.add("hidden");
+  mainView.classList.remove("hidden");
+  userEmail.textContent = email ?? "";
+  showStep("extract");
+}
+
+function showStep(step) {
+  extractStep.classList.toggle("hidden", step !== "extract");
+  reviewStep.classList.toggle("hidden",  step !== "review");
+  confirmStep.classList.toggle("hidden", step !== "confirm");
+}
+
+// ── Login ──────────────────────────────────────────────────────
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  loginError.classList.add("hidden");
+  loginBtn.disabled = true;
+  loginBtn.textContent = "Signing in…";
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user: { email: emailInput.value, password: passwordInput.value } }),
+    });
+
+    if (!res.ok) throw new Error("Invalid credentials");
+
+    const token = res.headers.get("Authorization");
+    if (!token) throw new Error("No token in response");
+
+    await chrome.storage.local.set({ jwt_token: token, user_email: emailInput.value });
+    showMainView(emailInput.value);
+  } catch {
+    loginError.textContent = "Invalid email or password.";
+    loginError.classList.remove("hidden");
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = "Sign in";
   }
 });
 
-// Toggle settings panel visibility
-settingsToggle.addEventListener("click", () => {
-  settingsPanel.classList.toggle("hidden");
-});
-
-// Toggle key visibility
-toggleVis.addEventListener("click", () => {
-  apiKeyInput.type = apiKeyInput.type === "password" ? "text" : "password";
-});
-
-// Save key
-saveKeyBtn.addEventListener("click", () => {
-  const key = apiKeyInput.value.trim();
-  if (!key) {
-    keyStatus.textContent = "Please enter an API key.";
-    keyStatus.classList.remove("saved");
-    return;
-  }
-  chrome.storage.local.set({ openai_api_key: key }, () => {
-    keyStatus.textContent = `Saved: ${maskKey(key)}`;
-    keyStatus.classList.add("saved");
+// ── Sign out ───────────────────────────────────────────────────
+signOutBtn.addEventListener("click", () => {
+  chrome.storage.local.remove(["jwt_token", "user_email"], () => {
+    showLoginView();
   });
 });
 
-// ── Extraction ─────────────────────────────────────────────────
-const extractBtn = document.getElementById("extract-btn");
-const analyzeBtn = document.getElementById("analyze-btn");
-const analysisDiv = document.getElementById("analysis");
-const resultDiv = document.getElementById("result");
-const resultToggle = document.getElementById("result-toggle");
-
-function setExtractedTextVisibility(isVisible) {
-  resultDiv.classList.toggle("hidden", !isVisible);
-}
-
-function updateResultToggleLabel(isVisible) {
-  resultToggle.textContent = isVisible ? "Hide extracted text" : "Show extracted text";
-  resultToggle.setAttribute("aria-expanded", String(isVisible));
-}
-
-resultToggle.addEventListener("click", () => {
-  const isVisible = resultDiv.classList.contains("hidden");
-  setExtractedTextVisibility(isVisible);
-  updateResultToggleLabel(isVisible);
-});
-
+// ── Extract ────────────────────────────────────────────────────
 extractBtn.addEventListener("click", async () => {
   extractBtn.disabled = true;
   extractBtn.textContent = "Extracting…";
-  resultDiv.classList.add("hidden");
-  resultDiv.classList.remove("error");
-  resultToggle.classList.add("hidden");
+  extractError.classList.add("hidden");
 
   try {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const response = await chrome.tabs.sendMessage(tab.id, { action: "extract" });
 
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      action: "extract",
-    });
-
-    if (response?.success) {
+    if (response?.success && response.text?.trim()) {
       resultDiv.textContent = response.text;
-      analyzeBtn.classList.remove("hidden");
-      analyzeBtn.disabled = false;
-      setExtractedTextVisibility(true);
-      extractBtn.classList.add("hidden");
+      showStep("review");
     } else {
-      resultDiv.textContent = response?.error ?? "Unknown error.";
-      resultDiv.classList.add("error");
-      resultDiv.classList.remove("hidden");
-      resultToggle.classList.add("hidden");
-      extractBtn.classList.remove("hidden");
+      extractBtn.disabled = false;
+      extractBtn.textContent = "Extract job posting";
+      extractError.textContent = response?.error ?? "No job description found on this page. Check config.js selector.";
+      extractError.classList.remove("hidden");
     }
-  } catch (err) {
-    resultDiv.textContent =
-      "Could not connect to this page. Try refreshing the page first.";
-    resultDiv.classList.add("error");
-    resultDiv.classList.remove("hidden");
-    resultToggle.classList.add("hidden");
-    extractBtn.classList.remove("hidden");
+  } catch {
+    extractBtn.disabled = false;
+    extractBtn.textContent = "Extract job posting";
+    extractError.textContent = "Could not connect to this page. Try refreshing first.";
+    extractError.classList.remove("hidden");
   }
-
-  extractBtn.disabled = false;
-  extractBtn.textContent = "Extract";
 });
 
-// ── Analyze ─────────────────────────────────────────────────────
-analyzeBtn.addEventListener("click", async () => {
-  const text = resultDiv.textContent;
+// ── Re-extract ─────────────────────────────────────────────────
+reExtractBtn.addEventListener("click", () => {
+  resultDiv.textContent = "";
+  extractBtn.disabled = false;
+  extractBtn.textContent = "Extract job posting";
+  showStep("extract");
+});
 
-  analyzeBtn.disabled = true;
-  analyzeBtn.textContent = "Analyzing…";
-  analysisDiv.classList.add("hidden");
-  analysisDiv.classList.remove("error");
+// ── Save to account ────────────────────────────────────────────
+saveBtn.addEventListener("click", async () => {
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving…";
+  saveError.classList.add("hidden");
 
   try {
-    const { openai_api_key } = await chrome.storage.local.get("openai_api_key");
-    const result = await analyzeJobPosting(text, openai_api_key);
-    renderAnalysis(result);
-    setExtractedTextVisibility(false);
-    resultToggle.classList.remove("hidden");
-    updateResultToggleLabel(false);
+    const { jwt_token } = await chrome.storage.local.get("jwt_token");
+    if (!jwt_token) { showLoginView(); return; }
 
-    // Final step completed: hide action buttons after successful analysis.
-    extractBtn.classList.add("hidden");
-    analyzeBtn.classList.add("hidden");
-  } catch (err) {
-    analysisDiv.textContent = err.message;
-    analysisDiv.classList.add("error");
-    analysisDiv.classList.remove("hidden");
-    setExtractedTextVisibility(true);
-    resultToggle.classList.add("hidden");
-    extractBtn.classList.remove("hidden");
-  }
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  analyzeBtn.disabled = false;
-  analyzeBtn.textContent = "Analyze with AI";
-});
-
-/**
- * Render the structured analysis result into the analysis container.
- */
-function renderAnalysis(data) {
-  analysisDiv.innerHTML = "";
-
-  const sections = [
-    { key: "skills", label: "Skills" },
-    { key: "job",    label: "Job Topics" },
-    { key: "tech",   label: "Technologies" },
-  ];
-
-  for (const { key, label } of sections) {
-    const items = data[key];
-    if (!items || !items.length) continue;
-
-    const section = document.createElement("div");
-    section.className = "analysis-section";
-
-    const headingBtn = document.createElement("button");
-    headingBtn.type = "button";
-    headingBtn.className = "analysis-toggle";
-    headingBtn.setAttribute("aria-expanded", "false");
-
-    const headingLabel = document.createElement("span");
-    headingLabel.textContent = label;
-
-    const headingIcon = document.createElement("span");
-    headingIcon.className = "analysis-toggle-icon";
-    headingIcon.textContent = "▸";
-
-    headingBtn.appendChild(headingLabel);
-    headingBtn.appendChild(headingIcon);
-    section.appendChild(headingBtn);
-
-    const sectionBody = document.createElement("div");
-    sectionBody.className = "analysis-section-body hidden";
-
-    for (const item of items) {
-      const title = Object.keys(item)[0];
-      const details = item[title];
-
-      const card = document.createElement("div");
-      card.className = "analysis-card";
-
-      const titleEl = document.createElement("strong");
-      titleEl.textContent = title;
-      card.appendChild(titleEl);
-
-      if (Array.isArray(details)) {
-        const ul = document.createElement("ul");
-        for (const d of details) {
-          const li = document.createElement("li");
-          li.textContent = d;
-          ul.appendChild(li);
-        }
-        card.appendChild(ul);
-      }
-
-      sectionBody.appendChild(card);
-    }
-
-    headingBtn.addEventListener("click", () => {
-      const isOpen = !sectionBody.classList.contains("hidden");
-      sectionBody.classList.toggle("hidden", isOpen);
-      headingBtn.setAttribute("aria-expanded", String(!isOpen));
-      headingIcon.textContent = isOpen ? "▸" : "▾";
+    const res = await fetch(`${API_BASE_URL}/job_postings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": jwt_token,
+      },
+      body: JSON.stringify({ raw_text: resultDiv.textContent, url: tab.url }),
     });
 
-    section.appendChild(sectionBody);
+    if (res.status === 401) {
+      // Token expired — clear and re-login
+      await chrome.storage.local.remove(["jwt_token", "user_email"]);
+      showLoginView();
+      return;
+    }
 
-    analysisDiv.appendChild(section);
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+
+    const data = await res.json();
+    // Link to the job posting detail page on the website
+    const webAppUrl = API_BASE_URL.replace("/api", "");
+    viewLink.href = `${webAppUrl}/job-postings/${data.id}`;
+    showStep("confirm");
+  } catch {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save to account";
+    saveError.textContent = "Failed to save. Check your connection and try again.";
+    saveError.classList.remove("hidden");
   }
+});
 
-  // Copy JSON button
-  const copyBtn = document.createElement("button");
-  copyBtn.className = "secondary-btn copy-btn";
-  copyBtn.textContent = "Copy JSON";
-  copyBtn.addEventListener("click", () => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    copyBtn.textContent = "Copied!";
-    setTimeout(() => { copyBtn.textContent = "Copy JSON"; }, 1500);
-  });
-  analysisDiv.appendChild(copyBtn);
-
-  analysisDiv.classList.remove("hidden");
-}
+// ── Extract another ────────────────────────────────────────────
+newExtractBtn.addEventListener("click", () => {
+  resultDiv.textContent = "";
+  extractBtn.disabled = false;
+  extractBtn.textContent = "Extract job posting";
+  showStep("extract");
+});

@@ -49,3 +49,8 @@ function getSelectors() {
     fallbackToFullText: false,
   };
 }
+
+// ── API ───────────────────────────────────────────────────────────
+// Base URL of the Rails API.
+// Change to your production URL when deploying.
+const API_BASE_URL = "http://localhost:3000/api";
