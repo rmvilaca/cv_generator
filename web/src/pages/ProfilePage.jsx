@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
 import client from "../api/client";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
+import { Separator } from "../components/ui/separator";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { AlertCircle, CheckCircle2, Plus, Trash2, Loader2 } from "lucide-react";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
@@ -77,63 +85,155 @@ export default function ProfilePage() {
     }
   }
 
-  if (loading) return <p>Loading…</p>;
+  if (loading) return <p className="text-muted-foreground">Loading…</p>;
 
   return (
-    <div className="profile-page">
-      <h1>Your Profile</h1>
-      <form onSubmit={handleSubmit}>
-        <section>
-          <h2>Personal Info</h2>
-          <label>Full name<input value={profile.full_name} onChange={(e) => setProfile({ ...profile, full_name: e.target.value })} /></label>
-          <label>Email<input value={profile.email ?? ""} onChange={(e) => setProfile({ ...profile, email: e.target.value })} /></label>
-          <label>Phone<input value={profile.phone ?? ""} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} /></label>
-          <label>Location<input value={profile.location ?? ""} onChange={(e) => setProfile({ ...profile, location: e.target.value })} /></label>
-          <label>Professional summary<textarea value={profile.summary ?? ""} onChange={(e) => setProfile({ ...profile, summary: e.target.value })} rows={4} /></label>
-          <label>Skills (comma-separated)
-            <input
-              value={profile.skills.join(", ")}
-              onChange={(e) => setProfile({ ...profile, skills: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-            />
-          </label>
-        </section>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight">Your Profile</h1>
 
-        <section>
-          <h2>Work Experience</h2>
-          {profile.work_experiences.map((exp, i) => (
-            <div key={i} className="entry-card">
-              <label>Company<input value={exp.company} onChange={(e) => updateExp(i, "company", e.target.value)} /></label>
-              <label>Title<input value={exp.title} onChange={(e) => updateExp(i, "title", e.target.value)} /></label>
-              <label>Start date<input value={exp.start_date} onChange={(e) => updateExp(i, "start_date", e.target.value)} placeholder="e.g. Jan 2020" /></label>
-              <label>End date<input value={exp.end_date ?? ""} onChange={(e) => updateExp(i, "end_date", e.target.value)} placeholder="Leave blank for Present" /></label>
-              <label>Bullet points (one per line)
-                <textarea
-                  value={(exp.bullet_points ?? []).join("\n")}
-                  onChange={(e) => updateExp(i, "bullet_points", e.target.value.split("\n").filter(Boolean))}
-                  rows={4}
-                />
-              </label>
-              <button type="button" onClick={() => removeExp(i)}>Remove</button>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Personal Info</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="full_name">Full name</Label>
+                <Input id="full_name" value={profile.full_name} onChange={(e) => setProfile({ ...profile, full_name: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prof_email">Email</Label>
+                <Input id="prof_email" value={profile.email ?? ""} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" value={profile.phone ?? ""} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Input id="location" value={profile.location ?? ""} onChange={(e) => setProfile({ ...profile, location: e.target.value })} />
+              </div>
             </div>
-          ))}
-          <button type="button" onClick={addExp}>+ Add experience</button>
-        </section>
-
-        <section>
-          <h2>Education</h2>
-          {profile.education_entries.map((edu, i) => (
-            <div key={i} className="entry-card">
-              <label>Institution<input value={edu.institution} onChange={(e) => updateEdu(i, "institution", e.target.value)} /></label>
-              <label>Degree<input value={edu.degree} onChange={(e) => updateEdu(i, "degree", e.target.value)} /></label>
-              <label>Year<input value={edu.year ?? ""} onChange={(e) => updateEdu(i, "year", e.target.value)} /></label>
-              <button type="button" onClick={() => removeEdu(i)}>Remove</button>
+            <div className="space-y-2">
+              <Label htmlFor="summary">Professional summary</Label>
+              <Textarea id="summary" value={profile.summary ?? ""} onChange={(e) => setProfile({ ...profile, summary: e.target.value })} rows={4} />
             </div>
-          ))}
-          <button type="button" onClick={addEdu}>+ Add education</button>
-        </section>
+            <div className="space-y-2">
+              <Label htmlFor="skills">Skills (comma-separated)</Label>
+              <Input
+                id="skills"
+                value={profile.skills.join(", ")}
+                onChange={(e) => setProfile({ ...profile, skills: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-        {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={saving}>{saving ? "Saving…" : saved ? "Saved!" : "Save profile"}</button>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Work Experience</CardTitle>
+            <Button type="button" variant="outline" size="sm" onClick={addExp}>
+              <Plus className="h-4 w-4" /> Add
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profile.work_experiences.length === 0 && (
+              <p className="text-sm text-muted-foreground">No work experience added yet.</p>
+            )}
+            {profile.work_experiences.map((exp, i) => (
+              <div key={i}>
+                {i > 0 && <Separator className="mb-4" />}
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Company</Label>
+                      <Input value={exp.company} onChange={(e) => updateExp(i, "company", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Title</Label>
+                      <Input value={exp.title} onChange={(e) => updateExp(i, "title", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Start date</Label>
+                      <Input value={exp.start_date} onChange={(e) => updateExp(i, "start_date", e.target.value)} placeholder="e.g. Jan 2020" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>End date</Label>
+                      <Input value={exp.end_date ?? ""} onChange={(e) => updateExp(i, "end_date", e.target.value)} placeholder="Leave blank for Present" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bullet points (one per line)</Label>
+                    <Textarea
+                      value={(exp.bullet_points ?? []).join("\n")}
+                      onChange={(e) => updateExp(i, "bullet_points", e.target.value.split("\n").filter(Boolean))}
+                      rows={4}
+                    />
+                  </div>
+                  <Button type="button" variant="destructive" size="sm" onClick={() => removeExp(i)}>
+                    <Trash2 className="h-4 w-4" /> Remove
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Education</CardTitle>
+            <Button type="button" variant="outline" size="sm" onClick={addEdu}>
+              <Plus className="h-4 w-4" /> Add
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profile.education_entries.length === 0 && (
+              <p className="text-sm text-muted-foreground">No education entries added yet.</p>
+            )}
+            {profile.education_entries.map((edu, i) => (
+              <div key={i}>
+                {i > 0 && <Separator className="mb-4" />}
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>Institution</Label>
+                      <Input value={edu.institution} onChange={(e) => updateEdu(i, "institution", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Degree</Label>
+                      <Input value={edu.degree} onChange={(e) => updateEdu(i, "degree", e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Year</Label>
+                      <Input value={edu.year ?? ""} onChange={(e) => updateEdu(i, "year", e.target.value)} />
+                    </div>
+                  </div>
+                  <Button type="button" variant="destructive" size="sm" onClick={() => removeEdu(i)}>
+                    <Trash2 className="h-4 w-4" /> Remove
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        {saved && (
+          <Alert variant="success">
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>Profile saved successfully.</AlertDescription>
+          </Alert>
+        )}
+        <Button type="submit" disabled={saving}>
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+          {saving ? "Saving…" : "Save profile"}
+        </Button>
       </form>
     </div>
   );

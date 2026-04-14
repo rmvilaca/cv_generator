@@ -4,6 +4,10 @@ import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
 import client from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
 import CvDocument from "../components/CvDocument";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { AlertCircle, Download, Loader2 } from "lucide-react";
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS  = 120_000;
@@ -40,42 +44,60 @@ export default function CvPreviewPage() {
     return () => clearTimeout(timer);
   }, [postingId, cvId]);
 
-  if (loading) return <p>Loading…</p>;
+  if (loading) return <p className="text-muted-foreground">Loading…</p>;
 
-  if (!generation) return <p>CV not found.</p>;
+  if (!generation) return <p className="text-muted-foreground">CV not found.</p>;
 
   if (generation.status === "pending" || generation.status === "processing") {
     return (
-      <div>
-        <p>Generating your CV… this takes about 15–30 seconds.</p>
-        {timedOut && <p className="error">Taking longer than expected. Please refresh.</p>}
-      </div>
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Generating your CV… this takes about 15–30 seconds.</p>
+          {timedOut && (
+            <Alert variant="destructive" className="mt-4 max-w-md">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>Taking longer than expected. Please refresh.</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
     );
   }
 
   if (generation.status === "failed") {
-    return <p className="error">CV generation failed. Please try again from the job posting page.</p>;
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>CV generation failed. Please try again from the job posting page.</AlertDescription>
+      </Alert>
+    );
   }
 
   const profileName = user?.full_name ?? user?.email ?? "Candidate";
 
   return (
-    <div className="cv-preview-page">
-      <div className="cv-preview-header">
-        <h1>Your CV</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Your CV</h1>
         <PDFDownloadLink
           document={<CvDocument content={generation.content} profileName={profileName} />}
           fileName="cv.pdf"
         >
           {({ loading: pdfLoading }) => (
-            <button disabled={pdfLoading}>{pdfLoading ? "Preparing…" : "Download PDF"}</button>
+            <Button disabled={pdfLoading}>
+              <Download className="h-4 w-4" />
+              {pdfLoading ? "Preparing…" : "Download PDF"}
+            </Button>
           )}
         </PDFDownloadLink>
       </div>
 
-      <PDFViewer width="100%" height={700} style={{ border: "1px solid #ccc" }}>
-        <CvDocument content={generation.content} profileName={profileName} />
-      </PDFViewer>
+      <Card className="overflow-hidden">
+        <PDFViewer width="100%" height={700} style={{ border: "none" }}>
+          <CvDocument content={generation.content} profileName={profileName} />
+        </PDFViewer>
+      </Card>
     </div>
   );
 }
