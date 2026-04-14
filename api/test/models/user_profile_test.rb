@@ -39,4 +39,23 @@ class UserProfileTest < ActiveSupport::TestCase
     assert_equal 1, profile.education_entries.count
     assert_equal "MIT", edu.institution
   end
+
+  test "work_experience skills defaults to empty array" do
+    profile = UserProfile.create!(user: @user, full_name: "Jane")
+    exp = profile.work_experiences.create!(company: "Acme", title: "Engineer", start_date: "Jan 2020")
+    assert_equal [], exp.skills
+  end
+
+  test "education_entry skills defaults to empty array" do
+    profile = UserProfile.create!(user: @user, full_name: "Jane")
+    edu = profile.education_entries.create!(institution: "MIT", degree: "BSc CS")
+    assert_equal [], edu.skills
+  end
+
+  test "education_entry supports start_year and end_year" do
+    profile = UserProfile.create!(user: @user, full_name: "Jane")
+    edu = profile.education_entries.create!(institution: "MIT", degree: "BSc CS", start_year: "2016", end_year: "2020")
+    assert_equal "2016", edu.start_year
+    assert_equal "2020", edu.end_year
+  end
 end
