@@ -25,7 +25,7 @@ class CvGenerationServiceTest < ActiveSupport::TestCase
                                    summary: "Rails engineer", skills: [ "Ruby", "Rails" ])
     @profile.work_experiences.create!(company: "Acme Corp", title: "Senior Engineer",
                                       start_date: "Jan 2020", bullet_points: [ "Built APIs" ])
-    @profile.education_entries.create!(institution: "MIT", degree: "BSc CS", year: "2019")
+    @profile.education_entries.create!(institution: "MIT", degree: "BSc CS", start_year: "2015", end_year: "2019")
     @posting = JobPosting.create!(
       user: @user, raw_text: "Hiring Rails dev. Must know Ruby, Docker.",
       analysis: {

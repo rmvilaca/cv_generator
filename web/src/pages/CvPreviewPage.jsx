@@ -16,6 +16,7 @@ export default function CvPreviewPage() {
   const { postingId, cvId } = useParams();
   const { user } = useAuth();
   const [generation, setGeneration] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timedOut, setTimedOut] = useState(false);
   const startedAt = useRef(Date.now());
@@ -23,8 +24,19 @@ export default function CvPreviewPage() {
   useEffect(() => {
     let timer;
 
+    async function fetchProfile() {
+      try {
+        const response = await client.get("/profile");
+        setProfile(response.data);
+      } catch {
+        // Profile may not exist yet for newly registered users.
+        setProfile(null);
+      }
+    }
+
     async function fetchAndMaybePoll() {
       try {
+        await fetchProfile();
         const r = await client.get(`/job_postings/${postingId}/cv_generations/${cvId}`);
         setGeneration(r.data);
 
@@ -74,14 +86,25 @@ export default function CvPreviewPage() {
     );
   }
 
-  const profileName = user?.full_name ?? user?.email ?? "Candidate";
+  const profileName = profile?.full_name ?? user?.full_name ?? user?.email ?? "Candidate";
+  const profileEmail = profile?.email ?? user?.email ?? "";
+  const profilePhone = profile?.phone ?? "";
+  const profileLocation = profile?.location ?? "";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Your CV</h1>
         <PDFDownloadLink
-          document={<CvDocument content={generation.content} profileName={profileName} />}
+          document={(
+            <CvDocument
+              content={generation.content}
+              profileName={profileName}
+              profileEmail={profileEmail}
+              profilePhone={profilePhone}
+              profileLocation={profileLocation}
+            />
+          )}
           fileName="cv.pdf"
         >
           {({ loading: pdfLoading }) => (
@@ -95,7 +118,13 @@ export default function CvPreviewPage() {
 
       <Card className="overflow-hidden">
         <PDFViewer width="100%" height={700} style={{ border: "none" }}>
-          <CvDocument content={generation.content} profileName={profileName} />
+          <CvDocument
+            content={generation.content}
+            profileName={profileName}
+            profileEmail={profileEmail}
+            profilePhone={profilePhone}
+            profileLocation={profileLocation}
+          />
         </PDFViewer>
       </Card>
     </div>

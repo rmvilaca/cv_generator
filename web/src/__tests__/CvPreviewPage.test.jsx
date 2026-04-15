@@ -31,10 +31,30 @@ const wrapper = ({ children }) => (
 
 describe("CvPreviewPage", () => {
   it("shows loading then renders pdf viewer when complete", async () => {
-    client.get = vi.fn().mockResolvedValue({
-      data: { id: 42, status: "completed", content: {
-        summary: "Great dev", experience: [], skills: ["Ruby"], education: []
-      }}
+    client.get = vi.fn().mockImplementation((url) => {
+      if (url === "/profile") {
+        return Promise.resolve({
+          data: {
+            full_name: "Jane Tester",
+            email: "jane@test.com",
+            phone: "+1 555 0100",
+            location: "Anywhere City",
+          },
+        });
+      }
+
+      return Promise.resolve({
+        data: {
+          id: 42,
+          status: "completed",
+          content: {
+            summary: "Great dev",
+            experience: [],
+            skills: ["Ruby"],
+            education: [],
+          },
+        },
+      });
     });
 
     render(<CvPreviewPage />, { wrapper });
@@ -43,8 +63,16 @@ describe("CvPreviewPage", () => {
   });
 
   it("shows generating message while status is pending", async () => {
-    client.get = vi.fn().mockResolvedValue({
-      data: { id: 42, status: "pending", content: null }
+    client.get = vi.fn().mockImplementation((url) => {
+      if (url === "/profile") {
+        return Promise.resolve({
+          data: { full_name: "Jane Tester", email: "jane@test.com", phone: "", location: "" },
+        });
+      }
+
+      return Promise.resolve({
+        data: { id: 42, status: "pending", content: null },
+      });
     });
 
     render(<CvPreviewPage />, { wrapper });

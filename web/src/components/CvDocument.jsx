@@ -3,6 +3,8 @@ import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 const styles = StyleSheet.create({
   page:     { padding: 40, fontFamily: "Helvetica", fontSize: 11, color: "#1a1a1a" },
   name:     { fontSize: 22, fontWeight: "bold", marginBottom: 4 },
+  contact:  { color: "#444", marginBottom: 6 },
+  divider:  { borderBottom: "1px solid #d0d0d0", marginBottom: 8 },
   section:  { marginTop: 16 },
   heading:  { fontSize: 13, fontWeight: "bold", borderBottom: "1px solid #ccc",
                paddingBottom: 2, marginBottom: 6 },
@@ -13,13 +15,22 @@ const styles = StyleSheet.create({
   skillRow: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
 });
 
-export default function CvDocument({ content, profileName }) {
+export default function CvDocument({
+  content,
+  profileName,
+  profileEmail,
+  profilePhone,
+  profileLocation,
+}) {
   const { summary, experience = [], skills = [], education = [] } = content;
+  const contacts = [profilePhone, profileEmail, profileLocation].filter(Boolean).join(" | ");
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <Text style={styles.name}>{profileName}</Text>
+        {contacts && <Text style={styles.contact}>{contacts}</Text>}
+        <View style={styles.divider} />
 
         {summary && (
           <View style={styles.section}>
