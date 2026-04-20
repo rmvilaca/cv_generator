@@ -142,5 +142,25 @@ export default function CvTab({ posting, profile, onPostingChanged }) {
     );
   }
 
+  if (gen.status === "failed") {
+    return (
+      <div className="space-y-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>CV generation failed. Please try again.</AlertDescription>
+        </Alert>
+        {genError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{genError}</AlertDescription>
+          </Alert>
+        )}
+        <Button onClick={startGeneration}>
+          <FileText className="h-4 w-4" /> Try again
+        </Button>
+      </div>
+    );
+  }
+
   return null;
 }

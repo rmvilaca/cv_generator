@@ -159,4 +159,30 @@ describe("CvTab", () => {
     expect(screen.getByTestId("pdf-viewer")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /generate new cv/i })).toBeEnabled();
   });
+
+  it("failed state: shows error and Try again fires POST (no modal)", async () => {
+    const refreshUser = vi.fn();
+    client.post = vi.fn().mockResolvedValue({
+      data: { id: 200, status: "pending", content: null, tokens_used: 0 },
+    });
+
+    render(
+      <AuthContext.Provider value={{ user: baseUser, refreshUser }}>
+        <CvTab
+          posting={{
+            id: 12,
+            analysis_status: "completed",
+            latest_cv_generation: { id: 150, status: "failed", content: null, tokens_used: 0 },
+          }}
+          profile={baseProfile}
+          onPostingChanged={vi.fn()}
+        />
+      </AuthContext.Provider>
+    );
+
+    expect(screen.getByText(/cv generation failed/i)).toBeInTheDocument();
+    screen.getByRole("button", { name: /try again/i }).click();
+    await screen.findByText(/generating your cv/i);
+    expect(client.post).toHaveBeenCalledWith("/job_postings/12/cv_generations");
+  });
 });
