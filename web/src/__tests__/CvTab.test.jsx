@@ -141,4 +141,22 @@ describe("CvTab", () => {
     expect(onPostingChanged).toHaveBeenCalled();
     vi.useRealTimers();
   });
+
+  it("renders PDFViewer and Generate new CV when latest is completed", () => {
+    renderTab({
+      posting: {
+        id: 11,
+        analysis_status: "completed",
+        latest_cv_generation: {
+          id: 77,
+          status: "completed",
+          content: { summary: "ok", experience: [], skills: [], education: [] },
+          tokens_used: 1,
+        },
+      },
+    });
+
+    expect(screen.getByTestId("pdf-viewer")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /generate new cv/i })).toBeEnabled();
+  });
 });

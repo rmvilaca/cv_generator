@@ -4,13 +4,15 @@ import client from "../api/client";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Alert, AlertDescription } from "./ui/alert";
-import { AlertCircle, FileText, Loader2 } from "lucide-react";
+import { AlertCircle, FileText, Loader2, Download } from "lucide-react";
+import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
+import CvDocument from "./CvDocument";
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS  = 120_000;
 const FREE_TIER_LIMIT  = 3;
 
-export default function CvTab({ posting, profile: _profile, onPostingChanged }) {
+export default function CvTab({ posting, profile, onPostingChanged }) {
   const { user, refreshUser } = useAuth();
   const [gen, setGen]         = useState(posting.latest_cv_generation);
   const [genError, setGenError] = useState(null);
@@ -98,6 +100,45 @@ export default function CvTab({ posting, profile: _profile, onPostingChanged }) 
           )}
         </CardContent>
       </Card>
+    );
+  }
+
+  if (gen.status === "completed") {
+    const profileName     = profile?.full_name ?? user?.full_name ?? user?.email ?? "Candidate";
+    const profileEmail    = profile?.email    ?? user?.email ?? "";
+    const profilePhone    = profile?.phone    ?? "";
+    const profileLocation = profile?.location ?? "";
+    const doc = (
+      <CvDocument
+        content={gen.content}
+        profileName={profileName}
+        profileEmail={profileEmail}
+        profilePhone={profilePhone}
+        profileLocation={profileLocation}
+      />
+    );
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-end gap-2">
+          <PDFDownloadLink document={doc} fileName="cv.pdf">
+            {({ loading: pdfLoading }) => (
+              <Button disabled={pdfLoading}>
+                <Download className="h-4 w-4" />
+                {pdfLoading ? "Preparing…" : "Download PDF"}
+              </Button>
+            )}
+          </PDFDownloadLink>
+          <Button variant="secondary" onClick={startGeneration}>
+            <FileText className="h-4 w-4" /> Generate new CV
+          </Button>
+        </div>
+        <Card className="overflow-hidden">
+          <PDFViewer width="100%" height={700} style={{ border: "none" }}>
+            {doc}
+          </PDFViewer>
+        </Card>
+      </div>
     );
   }
 
