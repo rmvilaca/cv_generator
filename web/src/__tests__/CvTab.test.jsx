@@ -233,6 +233,6 @@ describe("CvTab", () => {
       user: { ...baseUser, free_generations_used: 1, token_balance: 0 },
     });
     screen.getByRole("button", { name: /generate new cv/i }).click();
-    expect(await screen.findByText(/2 of your 2 remaining free generations/i)).toBeInTheDocument();
+    expect(await screen.findByText(/1 of your 2 remaining free generations/i)).toBeInTheDocument();
   });
 });

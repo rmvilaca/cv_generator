@@ -161,7 +161,7 @@ export default function CvTab({ posting, profile, onPostingChanged }) {
               <DialogTitle>Generate a new CV?</DialogTitle>
               <DialogDescription>
                 {isFreeTier
-                  ? `This will use ${freeRemaining} of your ${freeRemaining} remaining free generations.`
+                  ? `This will use 1 of your ${freeRemaining} remaining free generations.`
                   : `This will cost 1 token. You have ${user.token_balance} remaining.`}
               </DialogDescription>
             </DialogHeader>
