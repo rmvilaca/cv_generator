@@ -64,4 +64,29 @@ class Api::JobPostingsControllerTest < ActionDispatch::IntegrationTest
     get "/api/job_postings"
     assert_response :unauthorized
   end
+
+  test "GET show returns latest_cv_generation as nil when none exist" do
+    posting = JobPosting.create!(user: @user, raw_text: "no cv yet", analysis_status: "completed")
+    get "/api/job_postings/#{posting.id}", headers: @headers
+    assert_response :ok
+    body = JSON.parse(response.body)
+    assert body.key?("latest_cv_generation"), "expected latest_cv_generation key in payload"
+    assert_nil body["latest_cv_generation"]
+  end
+
+  test "GET show returns newest cv_generation attributes as latest_cv_generation" do
+    posting = JobPosting.create!(user: @user, raw_text: "with cvs", analysis_status: "completed")
+    older = CvGeneration.create!(user: @user, job_posting: posting, status: "completed",
+                                  content: { summary: "old" }, created_at: 2.days.ago)
+    newer = CvGeneration.create!(user: @user, job_posting: posting, status: "pending",
+                                  content: nil,              created_at: 1.minute.ago)
+
+    get "/api/job_postings/#{posting.id}", headers: @headers
+    assert_response :ok
+    latest = JSON.parse(response.body)["latest_cv_generation"]
+
+    assert_equal newer.id,  latest["id"]
+    assert_equal "pending", latest["status"]
+    assert_not_equal older.id, latest["id"]
+  end
 end
