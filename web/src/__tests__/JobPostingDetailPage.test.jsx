@@ -52,7 +52,7 @@ describe("JobPostingDetailPage", () => {
     });
     render(<JobPostingDetailPage />, { wrapper: wrapper(tab) });
     await waitFor(() => expect(screen.getByRole("tab", { name: /analysis/i })).toHaveAttribute("data-state", "active"));
-    expect(screen.getByText(/analysis/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^skills$/i })).toBeInTheDocument();
   });
 
   it("with ?tab=cv, opens CV tab and shows empty state when no latest_cv_generation", async () => {

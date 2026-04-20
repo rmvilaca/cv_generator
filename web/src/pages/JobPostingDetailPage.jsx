@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import client from "../api/client";
 import CvTab from "../components/CvTab";
-import { Card, CardContent } from "../components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../components/ui/accordion";
@@ -87,7 +87,8 @@ export default function JobPostingDetailPage() {
         <TabsContent value="analysis">
           {posting.analysis_status === "completed" && analysis && (
             <Card>
-              <CardContent className="pt-6">
+              <CardHeader><CardTitle>Analysis</CardTitle></CardHeader>
+              <CardContent>
                 <Accordion type="multiple" defaultValue={["skills", "job", "tech"]}>
                   {["skills", "job", "tech"].map((key) => (
                     <AccordionItem key={key} value={key}>
