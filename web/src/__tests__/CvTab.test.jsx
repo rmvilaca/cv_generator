@@ -32,4 +32,9 @@ describe("CvTab", () => {
     expect(screen.getByText(/no cv generated yet/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /generate cv/i })).toBeEnabled();
   });
+
+  it("disables Generate CV when analysis is not completed", () => {
+    renderTab({ posting: { id: 1, analysis_status: "pending", latest_cv_generation: null } });
+    expect(screen.getByRole("button", { name: /generate cv/i })).toBeDisabled();
+  });
 });
