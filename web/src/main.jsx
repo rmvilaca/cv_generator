@@ -9,7 +9,7 @@ import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import JobPostingsPage from "./pages/JobPostingsPage";
 import JobPostingDetailPage from "./pages/JobPostingDetailPage";
-import CvPreviewPage from "./pages/CvPreviewPage";
+import CvPreviewRedirect from "./pages/CvPreviewRedirect";
 import BillingPage from "./pages/BillingPage";
 import LandingPage from "./pages/LandingPage";
 import "./styles/app.css";
@@ -27,7 +27,7 @@ createRoot(document.getElementById("root")).render(
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/job-postings" element={<ProtectedRoute><JobPostingsPage /></ProtectedRoute>} />
             <Route path="/job-postings/:id" element={<ProtectedRoute><JobPostingDetailPage /></ProtectedRoute>} />
-            <Route path="/job-postings/:postingId/cv/:cvId" element={<ProtectedRoute><CvPreviewPage /></ProtectedRoute>} />
+            <Route path="/job-postings/:postingId/cv/:cvId" element={<ProtectedRoute><CvPreviewRedirect /></ProtectedRoute>} />
             <Route path="/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
           </Routes>
         </main>
