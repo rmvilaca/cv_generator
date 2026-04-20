@@ -108,4 +108,37 @@ describe("CvTab", () => {
     screen.getByRole("button", { name: /generate cv/i }).click();
     await screen.findByText(/not enough tokens/i);
   });
+
+  it("polls a pending generation and transitions to completed", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const onPostingChanged = vi.fn();
+    const responses = [
+      { id: 55, status: "pending",   content: null,              tokens_used: 0 },
+      { id: 55, status: "completed", content: { summary: "hi" }, tokens_used: 0 },
+    ];
+    client.get = vi.fn().mockImplementation(() => Promise.resolve({ data: responses.shift() }));
+
+    render(
+      <AuthContext.Provider value={{ user: baseUser, refreshUser: vi.fn() }}>
+        <CvTab
+          posting={{
+            id: 10,
+            analysis_status: "completed",
+            latest_cv_generation: { id: 55, status: "pending", content: null, tokens_used: 0 },
+          }}
+          profile={baseProfile}
+          onPostingChanged={onPostingChanged}
+        />
+      </AuthContext.Provider>
+    );
+
+    expect(screen.getByText(/generating your cv/i)).toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(client.get).toHaveBeenCalledWith("/job_postings/10/cv_generations/55");
+
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(onPostingChanged).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
 });
