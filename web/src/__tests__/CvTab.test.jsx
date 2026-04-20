@@ -185,4 +185,54 @@ describe("CvTab", () => {
     await screen.findByText(/generating your cv/i);
     expect(client.post).toHaveBeenCalledWith("/job_postings/12/cv_generations");
   });
+
+  const completedPosting = {
+    id: 20,
+    analysis_status: "completed",
+    latest_cv_generation: {
+      id: 500,
+      status: "completed",
+      content: { summary: "ok", experience: [], skills: [], education: [] },
+      tokens_used: 1,
+    },
+  };
+
+  it("Generate new CV opens modal; Cancel closes without POST", async () => {
+    client.post = vi.fn();
+    renderTab({ posting: completedPosting });
+    screen.getByRole("button", { name: /generate new cv/i }).click();
+    expect(await screen.findByText(/generate a new cv\?/i)).toBeInTheDocument();
+    screen.getByRole("button", { name: /cancel/i }).click();
+    expect(client.post).not.toHaveBeenCalled();
+  });
+
+  it("Generate in modal fires POST and transitions to pending", async () => {
+    client.post = vi.fn().mockResolvedValue({
+      data: { id: 501, status: "pending", content: null, tokens_used: 1 },
+    });
+    const refreshUser = vi.fn();
+
+    render(
+      <AuthContext.Provider value={{ user: { ...baseUser, free_generations_used: 3 }, refreshUser }}>
+        <CvTab posting={completedPosting} profile={baseProfile} onPostingChanged={vi.fn()} />
+      </AuthContext.Provider>
+    );
+
+    screen.getByRole("button", { name: /generate new cv/i }).click();
+    const confirm = await screen.findByRole("button", { name: /^generate$/i });
+    confirm.click();
+
+    await screen.findByText(/generating your cv/i);
+    expect(client.post).toHaveBeenCalledWith("/job_postings/20/cv_generations");
+    expect(refreshUser).toHaveBeenCalledWith({ token_balance: baseUser.token_balance - 1 });
+  });
+
+  it("modal copy reflects free tier when free generations remain", async () => {
+    renderTab({
+      posting: completedPosting,
+      user: { ...baseUser, free_generations_used: 1, token_balance: 0 },
+    });
+    screen.getByRole("button", { name: /generate new cv/i }).click();
+    expect(await screen.findByText(/2 of your 2 remaining free generations/i)).toBeInTheDocument();
+  });
 });

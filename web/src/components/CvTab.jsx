@@ -7,6 +7,14 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { AlertCircle, FileText, Loader2, Download } from "lucide-react";
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
 import CvDocument from "./CvDocument";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS  = 120_000;
@@ -18,6 +26,7 @@ export default function CvTab({ posting, profile, onPostingChanged }) {
   const [genError, setGenError] = useState(null);
   const startedAt = useRef(null);
   const [timedOut, setTimedOut] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!gen || (gen.status !== "pending" && gen.status !== "processing")) return;
@@ -66,6 +75,14 @@ export default function CvTab({ posting, profile, onPostingChanged }) {
       }
     }
   }
+
+  function confirmAndGenerate() {
+    setConfirmOpen(false);
+    startGeneration();
+  }
+
+  const freeRemaining = Math.max(0, FREE_TIER_LIMIT - user.free_generations_used);
+  const isFreeTier    = freeRemaining > 0;
 
   if (!gen) {
     return (
@@ -129,7 +146,7 @@ export default function CvTab({ posting, profile, onPostingChanged }) {
               </Button>
             )}
           </PDFDownloadLink>
-          <Button variant="secondary" onClick={startGeneration}>
+          <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
             <FileText className="h-4 w-4" /> Generate new CV
           </Button>
         </div>
@@ -138,6 +155,22 @@ export default function CvTab({ posting, profile, onPostingChanged }) {
             {doc}
           </PDFViewer>
         </Card>
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Generate a new CV?</DialogTitle>
+              <DialogDescription>
+                {isFreeTier
+                  ? `This will use ${freeRemaining} of your ${freeRemaining} remaining free generations.`
+                  : `This will cost 1 token. You have ${user.token_balance} remaining.`}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+              <Button onClick={confirmAndGenerate}>Generate</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
