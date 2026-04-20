@@ -1,19 +1,21 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState } from "react";
 import client from "../api/client";
 
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-
-  // Restore session from localStorage on mount
-  useEffect(() => {
+  const [user, setUser] = useState(() => {
     const token = localStorage.getItem("jwt_token");
     const stored = localStorage.getItem("user");
     if (token && stored) {
-      setUser(JSON.parse(stored));
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return null;
+      }
     }
-  }, []);
+    return null;
+  });
 
   async function login(email, password) {
     const response = await client.post("/login", { user: { email, password } });
