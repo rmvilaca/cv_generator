@@ -87,7 +87,7 @@ export default function ExperienceSection({ experiences, onChange }) {
                 </p>
                 {(exp.start_date || exp.end_date) && (
                   <p className="text-xs text-muted-foreground">
-                    {exp.start_date}{exp.start_date && (exp.end_date || " - Present")}{exp.end_date && exp.start_date ? ` - ${exp.end_date}` : exp.end_date}
+                    {[exp.start_date, exp.end_date || (exp.start_date && "Present")].filter(Boolean).join(" - ")}
                   </p>
                 )}
                 {exp.description && (

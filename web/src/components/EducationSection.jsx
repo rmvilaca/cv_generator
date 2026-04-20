@@ -86,7 +86,7 @@ export default function EducationSection({ educations, onChange }) {
                 </p>
                 {(edu.start_year || edu.end_year) && (
                   <p className="text-xs text-muted-foreground">
-                    {edu.start_year}{edu.start_year && (edu.end_year || " - Present")}{edu.end_year && edu.start_year ? ` - ${edu.end_year}` : edu.end_year}
+                    {[edu.start_year, edu.end_year || (edu.start_year && "Present")].filter(Boolean).join(" - ")}
                   </p>
                 )}
                 {edu.description && (
