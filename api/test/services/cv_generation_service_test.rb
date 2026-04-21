@@ -11,7 +11,7 @@ class CvGenerationServiceTest < ActiveSupport::TestCase
         "bullets" => [ "Built payment API processing $1M/month" ]
       }
     ],
-    "skills"    => [ "Ruby on Rails", "PostgreSQL", "Docker" ],
+    "skills"    => { "Languages" => [ "Ruby on Rails", "PostgreSQL" ], "Tools" => [ "Docker" ] },
     "education" => [ { "institution" => "MIT", "degree" => "BSc CS", "year" => "2019" } ]
   }.freeze
 
@@ -47,7 +47,8 @@ class CvGenerationServiceTest < ActiveSupport::TestCase
       result = CvGenerationService.new(user: @user, job_posting: @posting).call
       assert_equal "Experienced Rails engineer with 5 years building APIs.", result["summary"]
       assert_equal 1, result["experience"].length
-      assert_equal 3, result["skills"].length
+      assert_equal [ "Ruby on Rails", "PostgreSQL" ], result["skills"]["Languages"]
+      assert_equal [ "Docker" ], result["skills"]["Tools"]
     end
   end
 

@@ -15,15 +15,24 @@ class CvGenerationService
           "bullets": ["<achievement or responsibility tailored to the job posting>"]
         }
       ],
-      "skills":    ["<skill 1>", "<skill 2>"],
+      "skills": {
+        "Languages": ["<programming language, framework, or library>"],
+        "Tools":     ["<tool, platform, service, or methodology>"]
+      },
       "education": [
         { "institution": "<name>", "degree": "<degree>", "field_of_study": "<field>", "year": "<start> – <end>" }
       ]
     }
 
     Rules:
+    - NEVER name the target company in the summary. Not "at <Company>", not "for <Company>". The CV may be reused; leaving a company name in reads as amateurish.
     - Tailor bullet points to emphasize experience most relevant to the job posting
-    - Reorder skills to prioritize those mentioned in the job posting
+    - Split skills into two groups:
+      - "Languages": programming languages, frameworks, and libraries (e.g. Python, Rails, React, SQL)
+      - "Tools":     tools, platforms, services, and methodologies (e.g. Git, Docker, Linux, AWS, Agile)
+    - Each skill appears in exactly one group, never both.
+    - Within each group, prioritize skills mentioned in the job posting first.
+    - Omit a group from the output if it would be empty.
     - Keep language professional and achievement-focused
     - Respond in the same language as the job posting
     - Return ONLY valid JSON. No markdown, no commentary.
