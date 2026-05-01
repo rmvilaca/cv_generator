@@ -3,7 +3,10 @@ import { Link } from "react-router-dom";
 import client from "../api/client";
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
-import { Briefcase } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Briefcase, Puzzle } from "lucide-react";
+import { useExtensionInstalled } from "../hooks/useExtensionInstalled";
 
 const STATUS_VARIANT = {
   completed:  "success",
@@ -15,6 +18,7 @@ const STATUS_VARIANT = {
 export default function JobPostingsPage() {
   const [postings, setPostings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const extensionInstalled = useExtensionInstalled();
 
   useEffect(() => {
     client.get("/job_postings")
@@ -33,12 +37,30 @@ export default function JobPostingsPage() {
         </p>
       </div>
 
+      {!extensionInstalled && (
+        <Alert>
+          <Puzzle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>The browser extension is required to import job postings.</span>
+            <Button asChild size="sm">
+              <Link to="/install">Install</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {postings.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Briefcase className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <p className="text-muted-foreground">No job postings saved yet.</p>
-            <p className="text-sm text-muted-foreground">Install the extension and extract a job posting to get started.</p>
+            {extensionInstalled ? (
+              <p className="text-sm text-muted-foreground">Open the extension on a job posting page to extract it.</p>
+            ) : (
+              <Button asChild size="sm" className="mt-4">
+                <Link to="/install">Install the extension</Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (

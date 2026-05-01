@@ -12,6 +12,7 @@ import JobPostingDetailPage from "./pages/JobPostingDetailPage";
 import CvPreviewRedirect from "./pages/CvPreviewRedirect";
 import BillingPage from "./pages/BillingPage";
 import LandingPage from "./pages/LandingPage";
+import InstallExtensionPage from "./pages/InstallExtensionPage";
 import "./styles/app.css";
 
 createRoot(document.getElementById("root")).render(
@@ -24,6 +25,7 @@ createRoot(document.getElementById("root")).render(
             <Route path="/login"    element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/" element={<LandingPage />} />
+            <Route path="/install" element={<InstallExtensionPage />} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/job-postings" element={<ProtectedRoute><JobPostingsPage /></ProtectedRoute>} />
             <Route path="/job-postings/:id" element={<ProtectedRoute><JobPostingDetailPage /></ProtectedRoute>} />

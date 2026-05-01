@@ -7,6 +7,9 @@
  * multiple targets) or null to extract the entire BASE_SELECTOR.
  */
 
+// Marker the web app reads to detect that the extension is installed.
+document.documentElement.dataset.cvgExtension = "installed";
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action !== "extract") return;
 
