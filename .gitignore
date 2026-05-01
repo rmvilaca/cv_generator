@@ -1,0 +1,8 @@
+# Local tooling state
+.superpowers/
+
+# Vite build output
+web/dist/
+
+# Planning notes and specs (not source)
+docs/superpowers/
