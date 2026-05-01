@@ -34,7 +34,7 @@ class CvGenerationService
     - Within each group, prioritize skills mentioned in the job posting first.
     - Omit a group from the output if it would be empty.
     - Keep language professional and achievement-focused
-    - Respond in the same language as the job posting
+    - Always respond in English, regardless of the language of the job posting or candidate profile. Translate any non-English content (job titles, descriptions, summaries) into natural professional English.
     - Return ONLY valid JSON. No markdown, no commentary.
   PROMPT
 
