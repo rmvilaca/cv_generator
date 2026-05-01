@@ -80,7 +80,18 @@ loginForm.addEventListener("submit", async (e) => {
 });
 
 // ── Sign out ───────────────────────────────────────────────────
-signOutBtn.addEventListener("click", () => {
+signOutBtn.addEventListener("click", async () => {
+  const { jwt_token } = await chrome.storage.local.get("jwt_token");
+  if (jwt_token) {
+    try {
+      await fetch(`${API_BASE_URL}/logout`, {
+        method: "DELETE",
+        headers: { "Authorization": jwt_token },
+      });
+    } catch {
+      // Best-effort: clear local storage even if revoke fails.
+    }
+  }
   chrome.storage.local.remove(["jwt_token", "user_email"], () => {
     showLoginView();
   });

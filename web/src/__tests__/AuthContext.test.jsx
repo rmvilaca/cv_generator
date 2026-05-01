@@ -48,13 +48,15 @@ describe("AuthContext", () => {
       data: { status: { code: 200 }, data: { email: "a@b.com", token_balance: 0, free_generations_used: 0 } },
       headers: { authorization: "Bearer old-token" },
     });
+    client.delete = vi.fn().mockResolvedValue({ data: { status: { code: 200 } } });
 
     render(<AuthProvider><TestComponent /></AuthProvider>);
     fireEvent.click(screen.getByText("Login"));
     await waitFor(() => expect(screen.getByTestId("email")).toHaveTextContent("a@b.com"));
 
     fireEvent.click(screen.getByText("Logout"));
-    expect(screen.getByTestId("email")).toHaveTextContent("not logged in");
+    await waitFor(() => expect(screen.getByTestId("email")).toHaveTextContent("not logged in"));
     expect(localStorage.getItem("jwt_token")).toBeNull();
+    expect(client.delete).toHaveBeenCalledWith("/logout");
   });
 });

@@ -41,7 +41,12 @@ export function AuthProvider({ children }) {
     return userData;
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      await client.delete("/logout");
+    } catch {
+      // Token may already be expired/revoked; clear local state regardless.
+    }
     localStorage.removeItem("jwt_token");
     localStorage.removeItem("user");
     setUser(null);
