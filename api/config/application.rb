@@ -29,6 +29,12 @@ module TokenShop
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
 
+    # No Active Storage attachments use variants today; opt out so Rails stops
+    # warning about the missing image_processing gem at boot. Flip back to
+    # :mini_magick or :vips (with the matching gem + system deps) if/when the
+    # app starts generating image variants.
+    config.active_storage.variant_processor = :disabled
+
     # Devise requires session middleware for Warden; use cookie store for API
     config.session_store :cookie_store, key: "_token_shop_session"
     config.middleware.use ActionDispatch::Cookies
