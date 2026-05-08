@@ -243,9 +243,23 @@ install_gems() {
   echo "==> Installing gems (bundle --deployment)..."
   # Use as_app --at so bundle runs with cwd=APP_DIR; env -C in as_app overrides
   # any plain `cd && sudo` so we cannot just shell-cd before invoking it.
-  as_app --at "${APP_DIR}" bundle config set --local deployment 'true'
-  as_app --at "${APP_DIR}" bundle config set --local without 'development test'
+  ensure_bundle_config deployment 'true'
+  # Bundle normalises space-separated groups to colon-separated on disk; pass
+  # the colon form so the read-back comparison matches and we don't reset on
+  # every run (which prints a noisy "You are replacing..." warning).
+  ensure_bundle_config without 'development:test'
   as_app --at "${APP_DIR}" bundle install --jobs 4
+}
+
+ensure_bundle_config() {
+  # Set a bundler local config key only if its current value differs from the
+  # desired one. Avoids the redundant set + warning on idempotent re-runs.
+  local key="$1" want="$2" current
+  current="$(as_app --at "${APP_DIR}" bundle config get "${key}" 2>/dev/null \
+    | grep -oE '"[^"]*"' | head -1 | tr -d '"' || true)"
+  if [[ "${current}" != "${want}" ]]; then
+    as_app --at "${APP_DIR}" bundle config set --local "${key}" "${want}"
+  fi
 }
 
 prepare_db() {
