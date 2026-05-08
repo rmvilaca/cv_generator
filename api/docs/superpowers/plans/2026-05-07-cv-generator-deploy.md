@@ -6,7 +6,7 @@
 
 **Architecture:** New `cv_generator` system user owns `/opt/cv_generator/`. Ruby 3.3.5 lives there via asdf with `ASDF_DATA_DIR=/opt/cv_generator/.asdf`. App tree at `/opt/cv_generator/api/` is rsynced from the developer's source. `RAILS_MASTER_KEY` is injected by systemd from `/opt/cv_generator/api.env`. Public traffic enters through the existing tunnel (`cloudflared` already running) — only the ingress rule needs adding when a hostname is chosen.
 
-**Tech Stack:** bash, systemd, asdf v0.18+, Ruby 3.3.5, Rails 8.1.2, Puma, SQLite (Solid Trifecta), firewalld, SELinux, cloudflared.
+**Tech Stack:** bash, systemd, asdf v0.16.7, Ruby 3.3.5, Rails 8.1.2, Puma, SQLite (Solid Trifecta), firewalld, SELinux, cloudflared.
 
 **Spec:** `docs/superpowers/specs/2026-05-07-cv-generator-deploy-design.md`
 
@@ -50,10 +50,10 @@ APP_HOME="/opt/${APP_USER}"
 APP_DIR="${APP_HOME}/api"
 APP_SERVICE="${APP_NAME}"
 APP_ENV_FILE="${APP_HOME}/api.env"
-APP_BIND="${APP_BIND:-192.168.1.172}"
+APP_BIND="${APP_BIND:-0.0.0.0}"
 APP_PORT="${APP_PORT:-8090}"
 RUBY_VERSION="3.3.5"
-ASDF_VERSION="v0.18.1"
+ASDF_VERSION="v0.16.7"
 
 SOURCE_KEY="${ROOT}/config/master.key"
 
@@ -73,7 +73,7 @@ Commands:
   logs        Tail service logs
 
 Env overrides:
-  APP_BIND    Bind interface  [192.168.1.172]
+  APP_BIND    Bind interface  [0.0.0.0]
   APP_PORT    Listen port     [8090]
 EOF
   exit 1
@@ -198,9 +198,16 @@ Insert after `ensure_user`:
 
 ```bash
 as_app() {
-  # Run a command as cv_generator with HOME, ASDF_DATA_DIR, PATH set so asdf shims work.
+  # Run a command as cv_generator. Defaults to APP_HOME as cwd; pass `--at DIR` first to override.
+  # The chdir is essential: the parent shell's cwd may live under /home/<dev>/ which cv_generator
+  # cannot traverse (0700), and tools like ruby-build try to popd back to it.
+  local chdir="${APP_HOME}"
+  if [[ "${1:-}" == "--at" ]]; then
+    chdir="$2"
+    shift 2
+  fi
   sudo -u "${APP_USER}" \
-    env \
+    env -C "${chdir}" \
       HOME="${APP_HOME}" \
       ASDF_DATA_DIR="${APP_HOME}/.asdf" \
       PATH="${APP_HOME}/.asdf/shims:/usr/local/bin:/usr/bin:/bin" \
@@ -214,7 +221,9 @@ Insert after `as_app`:
 
 ```bash
 ensure_asdf() {
-  if command -v asdf &>/dev/null && [[ "$(command -v asdf)" == "/usr/local/bin/asdf" ]]; then
+  # Check the file directly: developer shells often have ~/bin/asdf earlier on PATH,
+  # so `command -v asdf` would mask the system install we actually care about.
+  if [[ -x /usr/local/bin/asdf ]]; then
     echo "==> asdf already installed at /usr/local/bin/asdf."
     return 0
   fi
@@ -235,20 +244,25 @@ Insert after `ensure_asdf`:
 ```bash
 ensure_ruby() {
   echo "==> Ensuring Ruby ${RUBY_VERSION} is installed for ${APP_USER}..."
-  # asdf v0.18+ uses 'plugin add', 'install', 'set'. Each is idempotent or tolerates re-runs.
   as_app asdf plugin add ruby https://github.com/asdf-vm/asdf-ruby.git || true
-  if as_app asdf list ruby 2>/dev/null | grep -q "${RUBY_VERSION}"; then
+
+  # Idempotency check: only consider the version "installed" if its ruby binary actually exists.
+  # asdf list shows partial/failed installs, so trust the binary on disk.
+  local ruby_bin="${APP_HOME}/.asdf/installs/ruby/${RUBY_VERSION}/bin/ruby"
+  if sudo test -x "${ruby_bin}"; then
     echo "==> Ruby ${RUBY_VERSION} already installed."
   else
-    echo "==> Installing Ruby ${RUBY_VERSION} (this takes a few minutes)..."
-    # Build deps for ruby-build:
+    echo "==> Installing Ruby ${RUBY_VERSION} build deps (sudo)..."
     sudo dnf install -y -q \
       gcc make patch autoconf bison \
       openssl-devel readline-devel zlib-devel libyaml-devel libffi-devel \
       gdbm-devel ncurses-devel
+    # Wipe any partial install from a prior failure
+    sudo rm -rf "${APP_HOME}/.asdf/installs/ruby/${RUBY_VERSION}" \
+                "${APP_HOME}/.asdf/downloads/ruby/${RUBY_VERSION}"
+    echo "==> Building Ruby ${RUBY_VERSION} (this takes a few minutes)..."
     as_app asdf install ruby "${RUBY_VERSION}"
   fi
-  # Pin globally (writes to /opt/cv_generator/.tool-versions)
   as_app asdf set -u ruby "${RUBY_VERSION}"
   echo "==> Ruby active: $(as_app ruby --version)"
 }
@@ -393,8 +407,10 @@ ensure_firewall_selinux() {
   sudo firewall-cmd --reload
 
   echo "==> Labelling SELinux port ${APP_PORT}/tcp as http_port_t (sudo)..."
-  # 'add' fails if already labelled; 'modify' would work for existing entries.
-  if sudo semanage port -l | awk '$1=="http_port_t"' | grep -qE "(^|, )${APP_PORT}(,|$)"; then
+  # 'semanage port -a' on an already-labelled port exits non-zero and would kill
+  # the script under set -e. Use grep -w so numeric word boundaries (space, comma,
+  # newline) match regardless of whether the port is first or later in the list.
+  if sudo semanage port -l | awk '$1=="http_port_t"' | grep -qw "${APP_PORT}"; then
     echo "==> Port already labelled."
   else
     sudo semanage port -a -t http_port_t -p tcp "${APP_PORT}"
@@ -423,11 +439,13 @@ cmd_setup() {
 
 ```bash
 ./hack/deploy.sh setup
-sudo firewall-cmd --list-ports | tr ' ' '\n' | grep '8090'
-sudo semanage port -l | awk '$1=="http_port_t"' | grep -E "(^|, )8090(,|$)"
+sudo firewall-cmd --query-port=8090/tcp
+sudo semanage port -l | awk '$1=="http_port_t"' | grep -qw 8090 && echo labelled
 ```
 
-Expected: `8090/tcp` listed in firewall; port 8090 labelled as http_port_t.
+Expected: setup ends with `Setup complete...`; firewall query prints `yes`; SELinux check prints `labelled`.
+
+Note: on a workstation with the `FedoraWorkstation` default zone (which permits the entire `1025-65535/tcp` range), `firewall-cmd --list-ports` will not show `8090/tcp` discretely — the `--add-port` call is a silent no-op there but is still correct on tighter zones (`FedoraServer`, `public`). Use `--query-port` for portable verification.
 
 - [ ] **Step 4: Commit Phase A1–A5**
 
@@ -570,10 +588,11 @@ Insert after `sync_source`:
 ```bash
 install_gems() {
   echo "==> Installing gems (bundle --deployment)..."
-  # Bundler from Gemfile.lock's BUNDLED WITH may differ from default — bundler self-installs as needed.
-  ( cd "${APP_DIR}" && as_app bundle config set --local deployment 'true' )
-  ( cd "${APP_DIR}" && as_app bundle config set --local without 'development test' )
-  ( cd "${APP_DIR}" && as_app bundle install --jobs 4 )
+  # Use as_app --at so bundle runs with cwd=APP_DIR; env -C in as_app overrides
+  # any plain `cd && sudo` so we cannot just shell-cd before invoking it.
+  as_app --at "${APP_DIR}" bundle config set --local deployment 'true'
+  as_app --at "${APP_DIR}" bundle config set --local without 'development test'
+  as_app --at "${APP_DIR}" bundle install --jobs 4
 }
 ```
 
@@ -614,10 +633,10 @@ Insert after `install_gems`:
 ```bash
 prepare_db() {
   echo "==> Running db:prepare (RAILS_ENV=production)..."
-  ( cd "${APP_DIR}" && as_app \
-      RAILS_ENV=production \
-      RAILS_MASTER_KEY="$(cat "${SOURCE_KEY}")" \
-      bundle exec bin/rails db:prepare )
+  as_app --at "${APP_DIR}" \
+    RAILS_ENV=production \
+    RAILS_MASTER_KEY="$(cat "${SOURCE_KEY}")" \
+    bundle exec bin/rails db:prepare
 }
 ```
 
@@ -695,8 +714,8 @@ cmd_full() {
 
 ```bash
 ./hack/deploy.sh full
-curl -fsS -o /dev/null -w "%{http_code}\n" http://192.168.1.172:8090/up
-curl -fsS http://192.168.1.172:8090/api/health
+curl -fsS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8090/up
+curl -fsS http://127.0.0.1:8090/api/health
 systemctl is-active cv_generator
 ```
 
@@ -725,13 +744,16 @@ cmd_push() {
 
 - [ ] **Step 2: Run and verify it works as a faster cycle**
 
-Make a trivial source change first (e.g. touch a controller) to confirm the rsync picks it up, then:
+Make a trivial source change first (touch an *existing* file — e.g. `touch app/controllers/api/cv_generations_controller.rb`) to confirm the rsync picks it up:
 
 ```bash
+touch app/controllers/api/cv_generations_controller.rb   # any existing file is fine
 ./hack/deploy.sh push
 ```
 
 Expected: completes in seconds (no gem install, no migrate); service still healthy.
+
+> **Don't `touch` a non-existent path.** That creates an empty `.rb` file which rsync deploys; production-mode Rails eager-loads every class at boot and Zeitwerk crashes Puma with `Expected file to define constant ..., but didn't`. Always `touch` something that already has content.
 
 - [ ] **Step 3: Commit Phase A6–A11**
 
@@ -785,7 +807,7 @@ Expected: recent journal lines from cv_generator service.
 ```bash
 ./hack/deploy.sh restart
 sleep 2
-curl -fsS -o /dev/null -w "%{http_code}\n" http://192.168.1.172:8090/up
+curl -fsS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8090/up
 ```
 
 Expected: `Restarted.`; then `200`.
@@ -815,8 +837,11 @@ When the public hostname is chosen (e.g. `cv.machadovilaca.eu`):
 
    ```yaml
    - hostname: <chosen>.machadovilaca.eu
-     service: http://192.168.1.172:8090
+     service: http://127.0.0.1:8090
    ```
+
+   (Puma binds `0.0.0.0:8090`, and `cloudflared` runs on the same host, so loopback is the
+   simplest target — survives any LAN/IP change.)
 
 2. Reload: `sudo systemctl reload cloudflared`.
 3. In the Cloudflare dashboard for `machadovilaca.eu`, add a CNAME for `<chosen>` pointing at the tunnel UUID
