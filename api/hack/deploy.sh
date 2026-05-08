@@ -11,7 +11,7 @@ APP_HOME="/opt/${APP_USER}"
 APP_DIR="${APP_HOME}/api"
 APP_SERVICE="${APP_NAME}"
 APP_ENV_FILE="${APP_HOME}/api.env"
-APP_BIND="${APP_BIND:-192.168.1.172}"
+APP_BIND="${APP_BIND:-0.0.0.0}"
 APP_PORT="${APP_PORT:-8090}"
 RUBY_VERSION="3.3.5"
 ASDF_VERSION="v0.16.7"
@@ -34,7 +34,7 @@ Commands:
   logs        Tail service logs
 
 Env overrides:
-  APP_BIND    Bind interface  [192.168.1.172]
+  APP_BIND    Bind interface  [0.0.0.0]
   APP_PORT    Listen port     [8090]
 EOF
   exit 1
@@ -189,8 +189,109 @@ cmd_setup() {
   ensure_firewall_selinux
   echo "==> Setup complete. Run './hack/deploy.sh full' to deploy code."
 }
-cmd_full()  { echo "TODO: full"; }
-cmd_push()  { echo "TODO: push"; }
+
+need_master_key() {
+  if [[ ! -f "${SOURCE_KEY}" ]]; then
+    echo "Error: ${SOURCE_KEY} not found. Restore it from your password manager." >&2
+    exit 1
+  fi
+}
+
+write_env_file() {
+  echo "==> Writing ${APP_ENV_FILE} (sudo)..."
+  local key; key="$(cat "${SOURCE_KEY}")"
+  sudo tee "${APP_ENV_FILE}" > /dev/null <<ENV
+RAILS_MASTER_KEY=${key}
+RAILS_LOG_TO_STDOUT=true
+SOLID_QUEUE_IN_PUMA=true
+ENV
+  sudo chown "${APP_USER}:${APP_USER}" "${APP_ENV_FILE}"
+  sudo chmod 0600 "${APP_ENV_FILE}"
+}
+
+sync_source() {
+  echo "==> Syncing source from ${ROOT} to ${APP_DIR} (sudo)..."
+  sudo rsync -a --delete \
+    --exclude '.git/' \
+    --exclude 'tmp/' \
+    --exclude 'log/' \
+    --exclude '.bundle/' \
+    --exclude 'vendor/bundle/' \
+    --exclude 'node_modules/' \
+    --exclude 'storage/' \
+    --exclude '.env*' \
+    --exclude 'docs/' \
+    "${ROOT}/" "${APP_DIR}/"
+
+  echo "==> Copying master.key explicitly..."
+  sudo install -o "${APP_USER}" -g "${APP_USER}" -m 0600 \
+    "${SOURCE_KEY}" "${APP_DIR}/config/master.key"
+
+  echo "==> Recreating tmp/ and log/ (rsync excluded them)..."
+  sudo install -d -o "${APP_USER}" -g "${APP_USER}" -m 0755 "${APP_DIR}/tmp"
+  sudo install -d -o "${APP_USER}" -g "${APP_USER}" -m 0755 "${APP_DIR}/tmp/pids"
+  sudo install -d -o "${APP_USER}" -g "${APP_USER}" -m 0755 "${APP_DIR}/log"
+
+  echo "==> Fixing ownership..."
+  sudo chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}"
+
+  echo "==> Restoring SELinux labels..."
+  sudo restorecon -R "${APP_DIR}" || true
+}
+
+install_gems() {
+  echo "==> Installing gems (bundle --deployment)..."
+  # Use as_app --at so bundle runs with cwd=APP_DIR; env -C in as_app overrides
+  # any plain `cd && sudo` so we cannot just shell-cd before invoking it.
+  as_app --at "${APP_DIR}" bundle config set --local deployment 'true'
+  as_app --at "${APP_DIR}" bundle config set --local without 'development test'
+  as_app --at "${APP_DIR}" bundle install --jobs 4
+}
+
+prepare_db() {
+  echo "==> Running db:prepare (RAILS_ENV=production)..."
+  as_app --at "${APP_DIR}" \
+    RAILS_ENV=production \
+    RAILS_MASTER_KEY="$(cat "${SOURCE_KEY}")" \
+    bundle exec bin/rails db:prepare
+}
+
+restart_and_check() {
+  echo "==> Restarting service (sudo)..."
+  sudo systemctl restart "${APP_SERVICE}"
+
+  echo "==> Waiting for service to come up..."
+  local attempt
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if curl -fsS -o /dev/null "http://${APP_BIND}:${APP_PORT}/up"; then
+      echo "==> Service healthy at http://${APP_BIND}:${APP_PORT}/up"
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "Error: service did not respond on /up within 10s. Recent logs:" >&2
+  sudo journalctl -u "${APP_SERVICE}" -n 30 --no-pager >&2
+  exit 1
+}
+
+cmd_full() {
+  need_master_key
+  write_env_file
+  sync_source
+  install_gems
+  prepare_db
+  restart_and_check
+  echo "==> Deploy complete."
+}
+
+cmd_push() {
+  need_master_key
+  write_env_file
+  sync_source
+  restart_and_check
+  echo "==> Push complete."
+}
 
 cmd_restart() { sudo systemctl restart "${APP_SERVICE}"; echo "Restarted."; }
 cmd_stop()    { sudo systemctl stop    "${APP_SERVICE}"; echo "Stopped."; }
