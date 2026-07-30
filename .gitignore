@@ -4,5 +4,8 @@
 # Vite build output
 web/dist/
 
+# Node dependencies
+web/node_modules/
+
 # Planning notes and specs (not source)
 docs/superpowers/
